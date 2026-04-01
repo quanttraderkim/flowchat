@@ -1,200 +1,97 @@
-import {
-  ViewportManager,
-  type FlowMessage,
-  type HeightMeasurement,
-  type HeightEngine,
-} from "@flowchat/core";
-import {
-  startTransition,
-  useEffect,
-  useEffectEvent,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import type { ChatViewProps } from "./types";
+import { type CSSProperties, type ReactNode, useMemo } from 'react'
+import type { Message } from '@flowchat/core'
+import { useViewport } from './hooks/useViewport'
 
-type LayoutState = {
-  range: { start: number; end: number };
-  offsets: readonly number[];
-  measurements: HeightMeasurement[];
-  totalHeight: number;
-  anchored: boolean;
-};
-
-function createInitialState(): LayoutState {
-  return {
-    range: { start: 0, end: 0 },
-    offsets: [0],
-    measurements: [],
-    totalHeight: 0,
-    anchored: true,
-  };
+export interface ChatViewProps {
+  messages: Message[]
+  font?: string
+  lineHeight?: number
+  overscan?: number
+  className?: string
+  style?: CSSProperties
+  renderMessage?: (message: Message, index: number) => ReactNode
 }
 
-export function ChatView<TMessage extends FlowMessage = FlowMessage>({
+function DefaultMessage({ message }: { message: Message }) {
+  const isUser = message.role === 'user'
+  return (
+    <div
+      style={{
+        padding: '12px 16px',
+        borderRadius: 12,
+        maxWidth: '80%',
+        alignSelf: isUser ? 'flex-end' : 'flex-start',
+        background: isUser ? '#007AFF' : '#F0F0F0',
+        color: isUser ? '#fff' : '#000',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      }}
+    >
+      {message.content}
+    </div>
+  )
+}
+
+export function ChatView({
   messages,
-  heightEngine,
-  overscanPx = 420,
+  font,
+  lineHeight,
+  overscan,
   className,
   style,
-  onAnchorChange,
   renderMessage,
-}: ChatViewProps<TMessage>) {
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const managerRef = useRef(new ViewportManager(overscanPx));
-  const [layoutState, setLayoutState] = useState<LayoutState>(createInitialState);
+}: ChatViewProps) {
+  const { containerRef, state, onScroll } = useViewport({
+    messages,
+    font,
+    lineHeight,
+    overscan,
+  })
 
-  const syncLayout = useEffectEvent(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
+  const { visibleRange, totalHeight } = state
 
-    const nextMeasurements = messages.map((message) =>
-      heightEngine.measure(message, viewport.clientWidth),
-    );
-    managerRef.current.setHeights(
-      nextMeasurements.map((measurement) => measurement.outerHeight),
-    );
-
-    const nextAnchored = managerRef.current.isAnchored(
-      viewport.scrollTop,
-      viewport.clientHeight,
-    );
-    const nextRange = managerRef.current.getVisibleRange(
-      viewport.scrollTop,
-      viewport.clientHeight,
-    );
-
-    startTransition(() => {
-      setLayoutState({
-        range: nextRange,
-        offsets: managerRef.current.getOffsets(),
-        measurements: nextMeasurements,
-        totalHeight: managerRef.current.getTotalHeight(),
-        anchored: nextAnchored,
-      });
-    });
-
-    onAnchorChange?.(nextAnchored);
-  });
-
-  const syncVisibleRange = useEffectEvent(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const nextAnchored = managerRef.current.isAnchored(
-      viewport.scrollTop,
-      viewport.clientHeight,
-    );
-    const nextRange = managerRef.current.getVisibleRange(
-      viewport.scrollTop,
-      viewport.clientHeight,
-    );
-
-    startTransition(() => {
-      setLayoutState((current) => ({
-        ...current,
-        range: nextRange,
-        anchored: nextAnchored,
-      }));
-    });
-
-    onAnchorChange?.(nextAnchored);
-  });
-
-  useEffect(() => {
-    managerRef.current = new ViewportManager(overscanPx);
-    syncLayout();
-  }, [overscanPx]);
-
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const observer = new ResizeObserver(() => {
-      syncLayout();
-    });
-
-    observer.observe(viewport);
-    syncLayout();
-
-    return () => observer.disconnect();
-  }, [messages]);
-
-  useEffect(() => {
-    syncLayout();
-  }, [messages, heightEngine]);
-
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const handleScroll = () => syncVisibleRange();
-    viewport.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => viewport.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const children = [];
-  for (let index = layoutState.range.start; index < layoutState.range.end; index += 1) {
-    const message = messages[index];
-    const measurement = layoutState.measurements[index];
-    const top = layoutState.offsets[index] ?? 0;
-
-    children.push(
-      <div
-        key={message.id}
-        style={{
-          position: "absolute",
-          insetInline: 0,
-          top: 0,
-          transform: `translateY(${top}px)`,
-        }}
-      >
-        {renderMessage?.({
-          index,
-          message,
-          measurement,
-          top,
-        }) ?? (
-          <pre
-            style={{
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              fontFamily: "inherit",
-            }}
-          >
-            {message.content}
-          </pre>
-        )}
-      </div>,
-    );
-  }
+  const visibleMessages = useMemo(
+    () => messages.slice(visibleRange.start, visibleRange.end),
+    [messages, visibleRange.start, visibleRange.end],
+  )
 
   return (
-    <div className={className} style={style}>
-      <div
-        ref={viewportRef}
-        style={{
-          position: "relative",
-          overflow: "auto",
-          height: "100%",
-        }}
-      >
-        <div style={{ position: "relative", height: layoutState.totalHeight }}>
-          {children}
+    <div
+      ref={containerRef}
+      onScroll={onScroll}
+      className={className}
+      style={{
+        overflow: 'auto',
+        height: '100%',
+        position: 'relative',
+        ...style,
+      }}
+    >
+      {/* Spacer for total scroll height */}
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        {/* Positioned container for visible messages */}
+        <div
+          style={{
+            position: 'absolute',
+            top: visibleRange.offsetTop,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: '0 16px',
+          }}
+        >
+          {visibleMessages.map((msg, i) => (
+            <div key={msg.id}>
+              {renderMessage
+                ? renderMessage(msg, visibleRange.start + i)
+                : <DefaultMessage message={msg} />
+              }
+            </div>
+          ))}
         </div>
       </div>
     </div>
-  );
+  )
 }
-
-export type { HeightEngine };

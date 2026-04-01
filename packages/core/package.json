@@ -1,16 +1,24 @@
 {
   "name": "@flowchat/core",
   "version": "0.1.0",
-  "private": true,
+  "description": "Framework-agnostic virtualized chat engine powered by Pretext",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "bench": "tsx benchmarks/perf.ts"
   },
-  "files": [
-    "dist",
-    "src"
-  ]
+  "dependencies": {
+    "@chenglou/pretext": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "tsx": "^4.0.0"
+  },
+  "keywords": ["chat", "virtualization", "pretext", "ai", "llm"],
+  "license": "MIT"
 }

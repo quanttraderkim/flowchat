@@ -1,13 +1,14 @@
 {
-  "name": "flowchat-prototype",
+  "name": "flowchat",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
+  "description": "Virtualized AI chat UI powered by Pretext",
   "scripts": {
-    "dev": "python3 -m http.server 4173",
-    "typecheck": "tsc -b packages/core packages/react"
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "bench": "pnpm --filter @flowchat/core run bench"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

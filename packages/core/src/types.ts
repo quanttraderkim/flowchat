@@ -1,60 +1,64 @@
-export type MessageRole = "user" | "assistant" | "system";
-export type MessageStatus = "complete" | "streaming" | "error";
-export type WhiteSpaceMode = "normal" | "pre-wrap";
+/** Core data types for FlowChat */
 
-export interface FlowMessage {
-  id: string;
-  role: MessageRole;
-  content: string;
-  status: MessageStatus;
-  timestamp?: number;
-  metadata?: Record<string, unknown>;
+export interface Message {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  blocks?: ContentBlock[]
+  status: 'complete' | 'streaming' | 'error'
+  timestamp: number
+  metadata?: Record<string, unknown>
 }
 
-export interface PretextAdapter {
-  prepare(text: string, font: string, options?: { whiteSpace?: WhiteSpaceMode }): unknown;
-  layout(
-    prepared: unknown,
-    maxWidth: number,
-    lineHeight: number,
-  ): { height: number; lineCount: number };
+export interface ContentBlock {
+  type: 'text' | 'code' | 'image' | 'table'
+  content: string
+  language?: string
+  measuredHeight?: number
 }
 
-export interface HeightEngineOptions {
-  font: string;
-  lineHeight: number;
-  whiteSpace?: WhiteSpaceMode;
-  bubbleWidthRatio?: number;
-  minBubbleWidth?: number;
-  maxBubbleWidth?: number;
-  horizontalPadding?: number;
-  verticalPadding?: number;
-  messageGap?: number;
-  streamingExtra?: number;
+export interface HeightCache {
+  /** Message ID → measured pixel height */
+  get(id: string): number | undefined
+  set(id: string, height: number): void
+  invalidate(id: string): void
+  clear(): void
 }
 
-export interface HeightMeasurement {
-  lineCount: number;
-  contentHeight: number;
-  outerHeight: number;
-  textWidth: number;
+export interface VisibleRange {
+  /** First visible message index (inclusive) */
+  start: number
+  /** Last visible message index (exclusive) */
+  end: number
+  /** Pixel offset of the first visible message */
+  offsetTop: number
 }
 
-export interface HeightEngine<TMessage extends FlowMessage = FlowMessage> {
-  measure(message: TMessage, containerWidth: number): HeightMeasurement;
-  measureMany(
-    messages: readonly TMessage[],
-    containerWidth: number,
-  ): Map<string, HeightMeasurement>;
-  measurePartial(
-    messageId: string,
-    partialText: string,
-    containerWidth: number,
-  ): HeightMeasurement;
-  invalidate(messageId?: string): void;
+export interface ViewportState {
+  scrollTop: number
+  viewportHeight: number
+  totalHeight: number
+  visibleRange: VisibleRange
+  isAnchored: boolean
 }
 
-export interface ViewportRange {
-  start: number;
-  end: number;
+export interface FlowChatConfig {
+  /** Pretext font string, e.g. "16px Inter" */
+  font: string
+  /** Line height in pixels */
+  lineHeight: number
+  /** Extra messages to render above/below viewport */
+  overscan: number
+  /** Padding inside message bubble (top + bottom) */
+  messagePadding: number
+  /** Gap between messages */
+  messageGap: number
+}
+
+export const DEFAULT_CONFIG: FlowChatConfig = {
+  font: '16px Inter',
+  lineHeight: 24,
+  overscan: 5,
+  messagePadding: 24,
+  messageGap: 8,
 }
