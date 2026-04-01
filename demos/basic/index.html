@@ -1,195 +1,196 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlowChat Demo — 1K Messages</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0a0a; color: #fff; height: 100vh; display: flex; flex-direction: column; }
-    header { padding: 16px 24px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { font-size: 18px; font-weight: 600; }
-    .stats { font-size: 13px; color: #888; display: flex; gap: 16px; }
-    .stat { display: flex; align-items: center; gap: 4px; }
-    .stat .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .dot.green { background: #22c55e; }
-    .dot.blue { background: #3b82f6; }
-    .dot.yellow { background: #eab308; }
-    #chat-container { flex: 1; overflow-y: auto; padding: 16px; scroll-behavior: auto; }
-    .spacer { position: relative; }
-    .messages { display: flex; flex-direction: column; gap: 8px; }
-    .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; animation: fadeIn 0.15s ease; }
-    .message.user { align-self: flex-end; background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
-    .message.assistant { align-self: flex-start; background: #1e1e1e; color: #e5e5e5; border-bottom-left-radius: 4px; }
-    .message .meta { font-size: 11px; color: #666; margin-top: 4px; }
-    .controls { padding: 12px 24px; border-top: 1px solid #222; display: flex; gap: 12px; align-items: center; }
-    button { padding: 8px 16px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; cursor: pointer; font-size: 13px; transition: background 0.15s; }
-    button:hover { background: #2a2a2a; }
-    button.primary { background: #2563eb; border-color: #2563eb; }
-    button.primary:hover { background: #1d4ed8; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>⚡ FlowChat Demo</h1>
-    <div class="stats">
-      <div class="stat"><div class="dot green"></div><span id="msg-count">0</span> messages</div>
-      <div class="stat"><div class="dot blue"></div><span id="dom-count">0</span> DOM nodes</div>
-      <div class="stat"><div class="dot yellow"></div><span id="render-time">0</span>ms render</div>
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>FlowChat Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-cursor-mode="orb" data-artifacts="on">
+    <div class="stage-backdrop" aria-hidden="true">
+      <div class="stage-grid"></div>
+      <div class="stage-orb orb-one" id="stageOrb1"></div>
+      <div class="stage-orb orb-two" id="stageOrb2"></div>
+      <div class="stage-orb orb-three" id="stageOrb3"></div>
+      <div class="stage-vignette"></div>
     </div>
-  </header>
-  <div id="chat-container">
-    <div class="spacer">
-      <div class="messages" id="messages"></div>
+
+    <div class="cursor-orb" id="cursorOrb" aria-hidden="true">
+      <div class="cursor-aura"></div>
+      <div class="cursor-ripple"></div>
+      <div class="cursor-satellite satellite-a"></div>
+      <div class="cursor-satellite satellite-b"></div>
+      <div class="cursor-satellite satellite-c"></div>
+      <div class="cursor-glyph" id="cursorGlyph"></div>
+      <div class="cursor-label" id="cursorLabel">ORB</div>
     </div>
-  </div>
-  <div class="controls">
-    <button class="primary" onclick="loadMessages(100)">+ 100 messages</button>
-    <button onclick="loadMessages(500)">+ 500</button>
-    <button onclick="loadMessages(1000)">+ 1,000</button>
-    <button onclick="clearAll()">Clear</button>
-    <button onclick="simulateStream()">▶ Simulate Stream</button>
-  </div>
 
-  <script>
-    const container = document.getElementById('chat-container')
-    const messagesEl = document.getElementById('messages')
-    const msgCountEl = document.getElementById('msg-count')
-    const domCountEl = document.getElementById('dom-count')
-    const renderTimeEl = document.getElementById('render-time')
+    <div class="artifact-fx" aria-hidden="true">
+      <div class="slash-effect" id="slashEffect"></div>
+      <div class="spell-effect" id="spellEffect">
+        <div class="spell-beam"></div>
+        <div class="spell-ring"></div>
+        <div class="spell-label" id="spellLabel">AETHER LIFT</div>
+      </div>
+      <div class="shockwave-effect" id="shockwaveEffect"></div>
+    </div>
 
-    let messages = []
-    let visibleStart = 0
-    let visibleEnd = 0
-    const ITEM_HEIGHT_ESTIMATE = 60
-    const OVERSCAN = 10
-    const VIEWPORT_BUFFER = 5
+    <div class="stage-hint">
+      Pretext bubble shrinkwrap + live reflow + virtualized viewport
+    </div>
 
-    // Sample content pools
-    const userMessages = [
-      "이거 어떻게 해?", "코드 리뷰 해줘", "오늘 뭐 할까?",
-      "파이썬으로 피보나치 함수 짜줘", "README 수정해줘",
-      "배포 상태 알려줘", "테스트 돌려봐", "이 에러 왜 나는 거야?",
-      "점심 뭐 먹지?", "PR 올려줘", "How does this work?",
-      "Can you explain the architecture?", "Fix the bug in auth module",
-    ]
+    <div class="page-shell">
+      <section class="intro-panel" id="introPanel">
+        <p class="eyebrow">FlowChat / Pretext Stage</p>
+        <h1 class="hero-title" id="heroTitle">
+          AI 채팅을 그냥 리스트가 아니라, 살아 있는 편집면처럼 만듭니다.
+        </h1>
+        <p class="orbit-note" id="orbitNote">
+          무지개 오브가 따라오고 헤드라인 텍스트가 커서 쪽으로 부드럽게 당겨집니다.
+        </p>
+        <p class="intro-copy">
+          이 데모는 <code>@chenglou/pretext</code>를 이용해 텍스트 높이를 먼저
+          계산하고, 버블 폭도 가능한 한 타이트하게 줄인 뒤, 실제 화면에는 필요한
+          메시지만 렌더링합니다. Bubbles 데모의 타이트한 버블 감각과 Editorial
+          Engine의 어두운 무드, 계기판, 광원 움직임을 채팅 경험으로 옮기는 방향으로
+          다듬었습니다.
+        </p>
 
-    const assistantMessages = [
-      "좋아, 바로 해볼게. 먼저 구조를 확인하고 수정할게.",
-      "```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```\n이렇게 하면 돼.",
-      "코드 리뷰 결과:\n1. ✅ 타입 정의 깔끔함\n2. ⚠️ 에러 핸들링 추가 필요\n3. ❌ 테스트 커버리지 부족\n\n전체적으로 괜찮은데 에러 처리만 보강하면 될 것 같아.",
-      "배포 완료! 🚀\n- URL: https://app.example.com\n- Build time: 32s\n- Status: healthy",
-      "알겠어, 잠깐만. 확인해볼게.\n\n원인은 인증 토큰 만료야. `refreshToken()` 호출하면 해결돼.",
-      "테스트 결과:\n✅ 21/21 passed (0.14s)\n\n전부 통과했어. 머지해도 될 것 같아.",
-      "Sure, let me explain the architecture:\n\n1. **HeightEngine** — measures text height without DOM\n2. **ViewportManager** — prefix-sum for O(log n) scroll\n3. **StreamHandler** — batches updates via requestAnimationFrame\n\nThe key insight is that Pretext's `layout()` is pure arithmetic (~0.09ms for 500 texts), so we can measure heights without triggering browser reflow.",
-      "그건 좀 복잡한 문제인데, 단계별로 정리해줄게:\n\n**Step 1:** 먼저 로그를 확인해봐\n**Step 2:** 환경변수 체크\n**Step 3:** DB 연결 상태 확인\n\n대부분 Step 2에서 해결되더라.",
-    ]
+        <div class="editorial-strip">
+          <article class="editorial-card">
+            <span class="editorial-label">Reference</span>
+            <strong>Bubbles</strong>
+            <p>버블 폭을 줄여 마지막 줄 뒤의 죽은 공간을 최소화합니다.</p>
+          </article>
+          <article class="editorial-card">
+            <span class="editorial-label">Reference</span>
+            <strong>Editorial Engine</strong>
+            <p>광원, 계기판, 살아 있는 표면감으로 데모 자체를 더 설득력 있게 만듭니다.</p>
+          </article>
+        </div>
 
-    function randomMessage(index) {
-      const isUser = Math.random() > 0.45
-      const pool = isUser ? userMessages : assistantMessages
-      const content = pool[Math.floor(Math.random() * pool.length)]
-      return {
-        id: `msg-${index}`,
-        role: isUser ? 'user' : 'assistant',
-        content: content,
-        timestamp: Date.now() - (10000 - index) * 60000,
-      }
-    }
+        <div class="control-card">
+          <div class="button-row">
+            <button class="seed-button" data-seed-count="200">200개</button>
+            <button class="seed-button is-active" data-seed-count="1000">1,000개</button>
+            <button class="seed-button" data-seed-count="3000">3,000개</button>
+          </div>
 
-    function loadMessages(count) {
-      const t0 = performance.now()
-      const startIdx = messages.length
-      for (let i = 0; i < count; i++) {
-        messages.push(randomMessage(startIdx + i))
-      }
-      renderVirtualized()
-      const elapsed = (performance.now() - t0).toFixed(1)
-      renderTimeEl.textContent = elapsed
-      msgCountEl.textContent = messages.length
+          <div class="mode-block">
+            <span class="mode-label">커서 아티팩트</span>
+            <div class="mode-row">
+              <button class="mode-button" data-cursor-mode="off">OFF</button>
+              <button class="mode-button is-active" data-cursor-mode="orb">오브</button>
+              <button class="mode-button" data-cursor-mode="sword">검</button>
+              <button class="mode-button" data-cursor-mode="staff">지팡이</button>
+              <button class="mode-button" data-cursor-mode="fist">주먹</button>
+            </div>
+            <p class="mode-copy" id="modeCopy">
+              부드러운 magnetic movement와 연속 hue shift에 집중한 기본 모드입니다.
+            </p>
+          </div>
 
-      // Auto-scroll to bottom
-      requestAnimationFrame(() => {
-        container.scrollTop = container.scrollHeight
-      })
-    }
+          <div class="action-row">
+            <button id="streamButton" class="primary-button">스트리밍 데모 시작</button>
+            <button id="jumpButton" class="ghost-button">맨 아래로 이동</button>
+          </div>
 
-    function clearAll() {
-      messages = []
-      messagesEl.innerHTML = ''
-      msgCountEl.textContent = '0'
-      domCountEl.textContent = '0'
-      renderTimeEl.textContent = '0'
-    }
+          <label class="slider-block" for="widthSlider">
+            <span>채팅 프레임 폭</span>
+            <input
+              id="widthSlider"
+              type="range"
+              min="360"
+              max="860"
+              step="10"
+              value="640"
+            />
+            <strong id="widthValue">640px</strong>
+          </label>
+        </div>
+      </section>
 
-    function renderVirtualized() {
-      const scrollTop = container.scrollTop
-      const viewportHeight = container.clientHeight
-      const totalHeight = messages.length * ITEM_HEIGHT_ESTIMATE
+      <section class="demo-panel">
+        <div class="chat-frame" id="chatFrame">
+          <header class="chat-header">
+            <div>
+              <p class="chat-kicker">Zero DOM Reads in the hot path</p>
+              <p class="chat-title">FlowChat Prototype</p>
+              <p class="chat-subtitle">
+                prepareWithSegments() + walkLineRanges() + prefix sum virtualization
+              </p>
+            </div>
+            <div class="chat-badge" id="statusBadge">loading</div>
+          </header>
 
-      // Calculate visible range
-      const rawStart = Math.floor(scrollTop / ITEM_HEIGHT_ESTIMATE)
-      const rawEnd = Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT_ESTIMATE)
-      const start = Math.max(0, rawStart - OVERSCAN)
-      const end = Math.min(messages.length, rawEnd + OVERSCAN)
+          <div class="mini-metrics">
+            <span class="mini-pill">Shrinkwrap bubbles</span>
+            <span class="mini-pill">Token streaming</span>
+            <span class="mini-pill">Bottom anchor</span>
+            <span class="mini-pill">Viewport virtualization</span>
+          </div>
 
-      if (start === visibleStart && end === visibleEnd) return
-      visibleStart = start
-      visibleEnd = end
+          <div class="chat-viewport" id="viewport">
+            <div class="chat-spacer" id="spacer"></div>
+          </div>
 
-      // Build visible messages
-      const fragment = document.createDocumentFragment()
-      for (let i = start; i < end; i++) {
-        const msg = messages[i]
-        const div = document.createElement('div')
-        div.className = `message ${msg.role}`
-        div.textContent = msg.content
-        div.style.transform = `translateY(${i * ITEM_HEIGHT_ESTIMATE}px)`
-        div.style.position = 'absolute'
-        div.style.left = msg.role === 'user' ? 'auto' : '16px'
-        div.style.right = msg.role === 'user' ? '16px' : 'auto'
-        div.style.width = 'fit-content'
-        fragment.appendChild(div)
-      }
+          <footer class="chat-composer">
+            <label class="composer-label" for="composerInput">직접 메시지 보내기</label>
+            <div class="composer-row">
+              <textarea
+                id="composerInput"
+                rows="3"
+                placeholder="예: 이 구조를 React 컴포넌트로 패키징하면 어디까지가 core여야 할까요?"
+              ></textarea>
+              <button id="sendButton" class="primary-button">보내기</button>
+            </div>
+            <p class="composer-hint">
+              사용자가 메시지를 보내면 assistant 응답이 토큰 단위로 길어지며, 버블 높이와
+              폭이 함께 다시 계산됩니다.
+            </p>
+          </footer>
+        </div>
+      </section>
+    </div>
 
-      messagesEl.style.height = totalHeight + 'px'
-      messagesEl.style.position = 'relative'
-      messagesEl.innerHTML = ''
-      messagesEl.appendChild(fragment)
+    <footer class="metrics-bar" aria-label="Live metrics">
+      <div class="metric">
+        <span class="metric-label">Messages</span>
+        <span class="metric-value" id="messageCount">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Rendered</span>
+        <span class="metric-value" id="renderedCount">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Total height</span>
+        <span class="metric-value" id="totalHeight">0px</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Reflow</span>
+        <span class="metric-value" id="measureTime">0ms</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Anchor</span>
+        <span class="metric-value" id="anchorState">ON</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Artifacts</span>
+        <span class="metric-value" id="artifactState">ORB</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Shrinkwrap</span>
+        <span class="metric-value" id="shrinkState">0%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Engine</span>
+        <span class="metric-value" id="engineState">loading</span>
+      </div>
+    </footer>
 
-      domCountEl.textContent = (end - start)
-    }
-
-    async function simulateStream() {
-      const msgId = messages.length
-      const msg = {
-        id: `msg-${msgId}`,
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      }
-      messages.push(msg)
-
-      const fullText = "스트리밍 데모입니다! 토큰이 하나씩 들어오는 것처럼 보이죠? FlowChat은 requestAnimationFrame으로 배치 처리해서 매 프레임마다 한 번만 높이를 재계산합니다. 이렇게 하면 1,000개 메시지가 있어도 60fps를 유지할 수 있어요. 🚀"
-      const tokens = fullText.split('')
-
-      for (const token of tokens) {
-        msg.content += token
-        renderVirtualized()
-        msgCountEl.textContent = messages.length
-        container.scrollTop = container.scrollHeight
-        await new Promise(r => setTimeout(r, 30))
-      }
-    }
-
-    // Scroll event for virtualization
-    container.addEventListener('scroll', () => {
-      requestAnimationFrame(renderVirtualized)
-    })
-
-    // Initial load
-    loadMessages(100)
-  </script>
-</body>
+    <script type="module" src="./app.js"></script>
+  </body>
 </html>
