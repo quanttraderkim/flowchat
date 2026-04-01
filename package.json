@@ -1,0 +1,13 @@
+{
+  "name": "flowchat-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "typecheck": "tsc -b packages/core packages/react"
+  }
+}

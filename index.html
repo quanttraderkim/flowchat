@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>FlowChat Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-cursor-mode="orb" data-artifacts="on">
+    <div class="stage-backdrop" aria-hidden="true">
+      <div class="stage-grid"></div>
+      <div class="stage-orb orb-one" id="stageOrb1"></div>
+      <div class="stage-orb orb-two" id="stageOrb2"></div>
+      <div class="stage-orb orb-three" id="stageOrb3"></div>
+      <div class="stage-vignette"></div>
+    </div>
+
+    <div class="cursor-orb" id="cursorOrb" aria-hidden="true">
+      <div class="cursor-aura"></div>
+      <div class="cursor-ripple"></div>
+      <div class="cursor-satellite satellite-a"></div>
+      <div class="cursor-satellite satellite-b"></div>
+      <div class="cursor-satellite satellite-c"></div>
+      <div class="cursor-glyph" id="cursorGlyph"></div>
+      <div class="cursor-label" id="cursorLabel">ORB</div>
+    </div>
+
+    <div class="artifact-fx" aria-hidden="true">
+      <div class="slash-effect" id="slashEffect"></div>
+      <div class="spell-effect" id="spellEffect">
+        <div class="spell-beam"></div>
+        <div class="spell-ring"></div>
+        <div class="spell-label" id="spellLabel">AETHER LIFT</div>
+      </div>
+      <div class="shockwave-effect" id="shockwaveEffect"></div>
+    </div>
+
+    <div class="stage-hint">
+      Pretext bubble shrinkwrap + live reflow + virtualized viewport
+    </div>
+
+    <div class="page-shell">
+      <section class="intro-panel" id="introPanel">
+        <p class="eyebrow">FlowChat / Pretext Stage</p>
+        <h1 class="hero-title" id="heroTitle">
+          AI 채팅을 그냥 리스트가 아니라, 살아 있는 편집면처럼 만듭니다.
+        </h1>
+        <p class="orbit-note" id="orbitNote">
+          무지개 오브가 따라오고 헤드라인 텍스트가 커서 쪽으로 부드럽게 당겨집니다.
+        </p>
+        <p class="intro-copy">
+          이 데모는 <code>@chenglou/pretext</code>를 이용해 텍스트 높이를 먼저
+          계산하고, 버블 폭도 가능한 한 타이트하게 줄인 뒤, 실제 화면에는 필요한
+          메시지만 렌더링합니다. Bubbles 데모의 타이트한 버블 감각과 Editorial
+          Engine의 어두운 무드, 계기판, 광원 움직임을 채팅 경험으로 옮기는 방향으로
+          다듬었습니다.
+        </p>
+
+        <div class="editorial-strip">
+          <article class="editorial-card">
+            <span class="editorial-label">Reference</span>
+            <strong>Bubbles</strong>
+            <p>버블 폭을 줄여 마지막 줄 뒤의 죽은 공간을 최소화합니다.</p>
+          </article>
+          <article class="editorial-card">
+            <span class="editorial-label">Reference</span>
+            <strong>Editorial Engine</strong>
+            <p>광원, 계기판, 살아 있는 표면감으로 데모 자체를 더 설득력 있게 만듭니다.</p>
+          </article>
+        </div>
+
+        <div class="control-card">
+          <div class="button-row">
+            <button class="seed-button" data-seed-count="200">200개</button>
+            <button class="seed-button is-active" data-seed-count="1000">1,000개</button>
+            <button class="seed-button" data-seed-count="3000">3,000개</button>
+          </div>
+
+          <div class="mode-block">
+            <span class="mode-label">커서 아티팩트</span>
+            <div class="mode-row">
+              <button class="mode-button" data-cursor-mode="off">OFF</button>
+              <button class="mode-button is-active" data-cursor-mode="orb">오브</button>
+              <button class="mode-button" data-cursor-mode="sword">검</button>
+              <button class="mode-button" data-cursor-mode="staff">지팡이</button>
+              <button class="mode-button" data-cursor-mode="fist">주먹</button>
+            </div>
+            <p class="mode-copy" id="modeCopy">
+              부드러운 magnetic movement와 연속 hue shift에 집중한 기본 모드입니다.
+            </p>
+          </div>
+
+          <div class="action-row">
+            <button id="streamButton" class="primary-button">스트리밍 데모 시작</button>
+            <button id="jumpButton" class="ghost-button">맨 아래로 이동</button>
+          </div>
+
+          <label class="slider-block" for="widthSlider">
+            <span>채팅 프레임 폭</span>
+            <input
+              id="widthSlider"
+              type="range"
+              min="360"
+              max="860"
+              step="10"
+              value="640"
+            />
+            <strong id="widthValue">640px</strong>
+          </label>
+        </div>
+      </section>
+
+      <section class="demo-panel">
+        <div class="chat-frame" id="chatFrame">
+          <header class="chat-header">
+            <div>
+              <p class="chat-kicker">Zero DOM Reads in the hot path</p>
+              <p class="chat-title">FlowChat Prototype</p>
+              <p class="chat-subtitle">
+                prepareWithSegments() + walkLineRanges() + prefix sum virtualization
+              </p>
+            </div>
+            <div class="chat-badge" id="statusBadge">loading</div>
+          </header>
+
+          <div class="mini-metrics">
+            <span class="mini-pill">Shrinkwrap bubbles</span>
+            <span class="mini-pill">Token streaming</span>
+            <span class="mini-pill">Bottom anchor</span>
+            <span class="mini-pill">Viewport virtualization</span>
+          </div>
+
+          <div class="chat-viewport" id="viewport">
+            <div class="chat-spacer" id="spacer"></div>
+          </div>
+
+          <footer class="chat-composer">
+            <label class="composer-label" for="composerInput">직접 메시지 보내기</label>
+            <div class="composer-row">
+              <textarea
+                id="composerInput"
+                rows="3"
+                placeholder="예: 이 구조를 React 컴포넌트로 패키징하면 어디까지가 core여야 할까요?"
+              ></textarea>
+              <button id="sendButton" class="primary-button">보내기</button>
+            </div>
+            <p class="composer-hint">
+              사용자가 메시지를 보내면 assistant 응답이 토큰 단위로 길어지며, 버블 높이와
+              폭이 함께 다시 계산됩니다.
+            </p>
+          </footer>
+        </div>
+      </section>
+    </div>
+
+    <footer class="metrics-bar" aria-label="Live metrics">
+      <div class="metric">
+        <span class="metric-label">Messages</span>
+        <span class="metric-value" id="messageCount">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Rendered</span>
+        <span class="metric-value" id="renderedCount">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Total height</span>
+        <span class="metric-value" id="totalHeight">0px</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Reflow</span>
+        <span class="metric-value" id="measureTime">0ms</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Anchor</span>
+        <span class="metric-value" id="anchorState">ON</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Artifacts</span>
+        <span class="metric-value" id="artifactState">ORB</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Shrinkwrap</span>
+        <span class="metric-value" id="shrinkState">0%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Engine</span>
+        <span class="metric-value" id="engineState">loading</span>
+      </div>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
